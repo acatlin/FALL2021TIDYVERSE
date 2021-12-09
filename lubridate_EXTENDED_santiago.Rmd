@@ -1,0 +1,114 @@
+
+---
+title: 'Lubridate'
+author: "Jeff Parks"
+date: "10/24/2021"
+output: 
+  html_document:
+    number_sections: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=TRUE, message=FALSE)
+```
+
+# Introduction
+
+**Lubridate** is an R package that simplifies the handling of date and time data, one of the most common problems in data transformation.
+
+[**Lubridate CheatSheet**](https://rawgit.com/rstudio/cheatsheets/master/lubridate.pdf)
+
+
+## Loading the package
+While part of the **tidyverse**, Lubridate does not load by default using the **library(tidyverse)** command.  Instead, load it separately:
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+## Introducting date-times
+A date-time is a data object representing a point on the timeline, typically to the nearest second, with notation as to the timezone represented.
+
+For example, to get the current date use **today()**; for the current date-time, use **now()**:
+
+```{r}
+today() # returns a date only
+now() # returns a date-time
+```
+
+---
+
+# Functions
+
+For this exercise, we'll use an excerpt of a Netflix dataset with date added per title.
+```{r}
+data <- ('https://raw.githubusercontent.com/jefedigital/cuny-data-607/main/data/netflix_titles.csv')
+
+df <- read.csv(data) %>%
+  select(title, date_added)
+```
+
+## Parsing datetimes
+Lubridate simplifies the parsing of strings and date-time objects and components into a uniform date-time format.
+
+If we inspect the **date_added** field in the Netflix dataset, we notice these are character strings with long-form months spelled out. We'll want to convert these into actual date-time objects.
+```{r, echo=FALSE}
+head(df,5)
+```
+
+To parse a given string to date-time, pass it to a function named for the order of the year (y), month (m), day (d), hour (h), minute (m) and second (s) elements in your data.
+```{r}
+mdy('September 1, 2020')
+```
+
+We can use the **mdy** function to create a new column with **date_added** in date-time format:
+```{r}
+df <- df %>% mutate(date_added_dt = mdy(date_added))
+```
+
+```{r, echo=FALSE}
+head(df,5)
+```
+
+## Rounding Datetimes
+Sometimes we want to round off date-time objects to the nearest unit of time (such as day, month or year.) 
+
+Lubridate provides three functions: **round_date** to round to the nearest unit,  **floor_date** to round down, and **ceiling_date** to round up.
+
+As an example, let's round our new **date_added_dt** field down to the nearest month:
+
+```{r}
+df <- df %>%
+  mutate(date_added_mon = floor_date(date_added_dt, unit='month'))
+```
+
+```{r, echo=FALSE}
+head(df,5)
+```
+
+
+## Time Sections - EXTENDED
+
+You can find more information about dates by adding sections like quarter added or week of the year using `quarter` and `week` respectively
+
+```{r}
+df <- df %>% mutate(quarter_added = quarter(date_added_dt),
+                    week_added = week(date_added_dt))
+
+head(df,5)
+```
+
+Another useful function is `interval` to check if a date falls under an interval. This involves using date-math which is more complicated than you'd expect since it has to account for things like leap years, leap seconds, daylight savings etc.
+
+```{r}
+december_interval <- interval(ymd("2020-12-01"),ymd("2020,12,31"))
+
+df <- df %>% mutate(december_2020 = date_added_dt %within% december_interval)
+
+head(df,5)
+
+df_december_2020 <- df %>% filter(december_2020 == TRUE)
+
+head(df_december_2020,5)
+```
