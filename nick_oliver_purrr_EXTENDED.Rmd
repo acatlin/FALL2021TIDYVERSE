@@ -1,0 +1,120 @@
+---
+title: 'tidyverse: using purrr to manipulate dataframe'
+author: "Nick Oliver"
+output:
+  prettydoc::html_pretty:
+    theme: hpstr
+    highlight: github
+editor_options: 
+  chunk_output_type: console
+---
+
+# Tidyverse: Using `purrr` to manipulate data in a functional way
+
+## Load Tidyverse
+```{r results=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+## Dataset
+
+Data was obtained from FiveThirtyEight's article (How Americans View Biden's Response To The Coronavirus Crisis)[https://projects.fivethirtyeight.com/coronavirus-polls/]
+
+```{r, warning=FALSE, message=FALSE}
+approvalPollsDf <- read_csv("https://raw.githubusercontent.com/nolivercuny/data607/master/covid_approval_polls.csv")
+
+glimpse(approvalPollsDf)
+```
+
+## Using `map2`
+
+Q: What is the difference between approval and disapproval
+
+A: Use the `map2` function to apply a difference function across the approval and disapproval columns
+
+
+```{r}
+approvalPollsDf$approve_dissapprove_diff <- map2_dbl(approvalPollsDf$approve, approvalPollsDf$disapprove, ~{.x - .y})
+approvalPollsDf %>% head() %>% glimpse()
+```
+
+## Using `some`
+
+Q: Can we use `purrr` to check if our new column contains any `NA` values?
+
+A: Yes, you can use the `some` function which returns `TRUE` if at least one value matches your condition
+
+```{r}
+some(approvalPollsDf$approve_dissapprove_diff, is.na)
+```
+ 
+## Using `modify_if`
+
+Q: How can we coerce the `NA` values into a number
+
+A: You can use the `modify_if` function which will modify a value only if the predicate returns true.
+
+```{r}
+approvalPollsDf$approve_dissapprove_diff <- modify_if(approvalPollsDf$approve_dissapprove_diff, is.na, ~0.0)
+```
+
+Using it again to add a new column marking if the majority approve or disapprove
+
+```{r}
+approvalPollsDf$majority_approve <-
+map_if(approvalPollsDf$approve_dissapprove_diff, ~.x > 0, ~"TRUE", .else = ~"FALSE") %>% unlist()
+```
+
+## Plot the data
+
+Box plot comparing the approval and disapproval margins. I use the `map_dbl` to convert the negative values to positive for side-by-side comparison
+
+```{r}
+approvalPollsDf %>% ggplot(aes(x=majority_approve,y=map_dbl(approve_dissapprove_diff,abs),fill=majority_approve)) +
+  geom_boxplot()
+```
+
+
+## Extension - Leticia S.
+
+## Customizing plots
+
+```{r}
+# Box plot comparison of approval and disapproval margins
+approvalPollsDf %>% 
+  ggplot(aes(x = majority_approve, y = map_dbl(approve_dissapprove_diff,abs), fill = majority_approve)) +
+  geom_boxplot() +
+  xlab("Majority Approve") + # adds x-axis label
+  ylab("Approve and Disapprove Difference") + # adds y-axis label
+  labs(title = "Comparison of Approval and Disapproval Margins") # adds title
+```
+
+
+```{r}
+# Scatter plot of approval ratings for all parties
+approvalPollsDf %>% 
+  ggplot(aes(x = start_date, y = approve, color = party)) +
+           geom_point() +
+  labs(title = "Approval Ratings Scatterplot", x = "Start Date", y = "Approve") # adds labels to x and y axis along with title for plot
+```
+
+
+```{r}
+# Scatter plot of disapproval ratings for all parties
+approvalPollsDf %>% 
+  ggplot(aes(x = start_date, y = disapprove, color = party)) +
+           geom_point() +
+  labs(title = "Disapproval Ratings Scatterplot", x = "Start Date", y = "Disapprove") # adds labels to x and y axis along with title for plot
+```
+
+
+```{r}
+# Scatter plot of disapproval ratings for all parties
+approvalPollsDf %>% 
+  ggplot(aes(x = start_date, y = map_dbl(approve_dissapprove_diff,abs), color = party)) +
+           geom_point() +
+  labs(title = "Differential of Approval and Disapproval Ratings Scatterplot", x = "Start Date", y = "Approve / Disapprove") # adds labels to x and y axis along with title for plot
+```
+
+
+In conclusion, we see from the boxplot the sample population does approve of the president's response to the Coronavirus crisis. Within the scatterplots you can also visualize how each party's difference in approval and disapproval ratings are plotted with Independent and All having the lowest count and Democratic and Republican's having the highest count.

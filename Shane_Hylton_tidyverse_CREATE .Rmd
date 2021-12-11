@@ -1,0 +1,198 @@
+---
+title: "TidyVerse CREATE"
+author: "Shane Hylton"
+date: "11/15/2021"
+output:
+    prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+Tidyverse is a versatile tool for data science and I will be using a [fivethirtyeight](https://projects.fivethirtyeight.com/2021-nfl-predictions/) dataset to dive into tidyverse. 
+This comprehensive package offers a wide array of dataframe tools, as well as tools to manipulate other forms of data. In short, tidyverse is the master key for data manipulation.
+
+
+### Loading all Tidyverse packages
+```{r}
+
+library(tidyverse)
+
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(tidyr)
+library(tibble)
+library(forcats)
+
+```
+
+By loading library(tidyverse), all of the packages are also loaded, so it was just an extra step to intentionally list out all eight packages. 
+It is pretty clear that someone on the naming team at tidyverse loves cats. 
+
+## Loading the Data
+
+```{r}
+
+link <- 'https://raw.githubusercontent.com/st3vejobs/tidyverse-CREATE/main/nfl_elo_latest.csv'
+raw <- read.csv(url(link), na.strings = "")
+
+raw <- subset(raw, select = -c(playoff))
+
+nfl <- na.omit(raw)
+
+```
+
+
+### filter( )
+
+If I only wanted to see Elo changes over time in the month of October, I can use filter( ) from the dplyr package in tidyverse.
+
+```{r}
+
+oct <- nfl %>%
+  filter(date >= "2021-10-01", date < "2021-11-01")
+
+head(oct)
+```
+
+### arrange( )
+
+Now, let's say I wanted to go back to the nfl dataframe and sort it by the importance of the game. 
+
+```{r}
+
+nfl_important <- arrange(nfl, desc(importance))
+
+paste("The most important game so far this season was on November 14 where the Chiefs defeated the Raiders. ")
+nfl_important[1, ]
+
+```
+### Rename ( ) 
+
+Two of the columns have names that are not arranged properly and they may be confusing. I will rename them to make them easier to understand. 
+They are the quarterback-adjusted win probabilities for each team in a particular game. 
+
+```{r}
+
+nfl_important <- nfl_important %>% rename(qb1_adjusted_elo_prob = qbelo_prob1, qb2_adjusted_elo_prob = qbelo_prob2)
+
+```
+
+
+### Select ( )
+
+Select is another subsetting tool that goes a bit deeper. I will create a subset of all Chicago Bears games and then I will select a few key columns. 
+
+```{r}
+
+bears <- subset(nfl_important, team1 == "CHI" | team2 == "CHI")
+bearst1 <- subset(bears, team1 == "CHI")
+bearst2 <- subset(bears, team2 == "CHI")
+
+bearsqb_elo_1 <- bearst1 %>% select(team1,elo_prob1,qb1,qb1_adjusted_elo_prob,importance)
+bearsqb_elo_1 <- bearsqb_elo_1 %>% rename(team = team1, elo_prob = elo_prob1, qb = qb1, qb_elo_prob = qb1_adjusted_elo_prob)
+bearsqb_elo_2 <- bearst2 %>% select(team2,elo_prob2,qb2,qb2_adjusted_elo_prob,importance)
+bearsqb_elo_2 <- bearsqb_elo_2 %>% rename(team = team2, elo_prob = elo_prob2, qb = qb2, qb_elo_prob = qb2_adjusted_elo_prob)
+bearsqb_elo <- rbind(bearsqb_elo_1,bearsqb_elo_2)
+bearsqb_elo
+
+```
+### Relocate ( ) 
+
+With the new dataframe, I would like to reorder the columns so that it is easier to view. Team may be unnecessary, but I will move it to the end just in case. I would like to list the QB first so it is easier to analyze the value of each quarterback. 
+
+```{r}
+
+bearsqb_elo <- bearsqb_elo %>% relocate(qb, team)
+bearsqb_elo <- bearsqb_elo %>% relocate(team, .after = importance)
+
+```
+
+### Add_Column ( ), stringr commands, group_by ( )
+
+Now, I will perform some additional manipulation on the dataframe. 
+
+```{r}
+
+qb_impact <- bearsqb_elo$qb_elo_prob - bearsqb_elo$elo_prob
+
+names <- unlist(bearsqb_elo$qb)
+first <- names[seq(1,length(names),by = 1)]
+
+first <- str_extract(names, '[A-Z].{1,30}')
+first <- c(str_trim(str_extract(names, '.+\\s{1,}')))
+initials <- str_extract_all(first, '(^[A-Z])|(\\s)([A-Z])')
+first_initial <- str_extract(first, '^[A-Z]')
+
+bearsqb_elo <- bearsqb_elo %>% add_column(qb_impact)
+bearsqb_elo <- bearsqb_elo %>% relocate(qb_impact, .before = importance)
+bearsqb_elo <- bearsqb_elo %>% add_column(first_initial)
+bearsqb_elo <- bearsqb_elo %>% relocate(first_initial, .after = qb)
+bearsqb_elo$qb <- as.factor(bearsqb_elo$qb)
+
+bearsqb_elo <- bearsqb_elo %>% group_by(qb) %>% arrange(qb) 
+#Note: arrange must be used with group_by to rearrange rows. group_by does not affect the layout of rows. 
+
+bearsqb_elo
+```
+
+### Mutate ( )
+
+Mutate takes a function found in base R and makes it even better. I will perform a couple of example mutations below. I performed the base R version of this function above with qb_impact.
+
+```{r}
+
+bearsqb_elo <- bearsqb_elo %>% 
+  mutate(mean_elo_prob = (elo_prob + qb_elo_prob)/2)
+
+```
+
+As one can see, this provides a more streamlined approach to a similar calculation. 
+
+### ggplot ( )
+
+Here, I will use a new subset for the Chicago Bears, and this time I will plot Elo over time using ggplot2.
+
+```{r}
+
+bears <- subset(nfl_important, team1 == "CHI" | team2 == "CHI")
+bearst1 <- subset(bears, team1 == "CHI")
+bearst2 <- subset(bears, team2 == "CHI")
+
+bearsqb_elo_1 <- bearst1 %>% select(date, team1, elo1_pre, elo1_post, elo_prob1, qb1, qb1_adjusted_elo_prob, importance)
+bearsqb_elo_1 <- bearsqb_elo_1 %>% rename(team = team1, elo_pre = elo1_pre, elo_post = elo1_post, elo_prob = elo_prob1, qb = qb1, qb_elo_prob = qb1_adjusted_elo_prob)
+bearsqb_elo_2 <- bearst2 %>% select(date, team2, elo2_pre, elo2_post, elo_prob2, qb2, qb2_adjusted_elo_prob, importance)
+bearsqb_elo_2 <- bearsqb_elo_2 %>% rename(team = team2, elo_pre = elo2_pre, elo_post = elo2_post, elo_prob = elo_prob2, qb = qb2, qb_elo_prob = qb2_adjusted_elo_prob)
+bears <- rbind(bearsqb_elo_1,bearsqb_elo_2)
+bears
+
+ggplot(bears)+ 
+  geom_point(aes(x = date, y = elo_pre, color = "elo_pre"), size=3)+
+  geom_point(aes(x = date, y = elo_post, color = "elo_post"), size=3)+
+  ggtitle('Bears Elo Over Time')+
+  labs(
+    x = 'Date',
+    y = 'Elo Rating',
+    color = 'Legend')+
+  geom_line(aes(x = date, y = elo_pre, group = 1, color = "elo_pre"), linetype = "dashed")+
+  geom_line(aes(x = date, y = elo_post, group = 1, color = "elo_post"), linetype = "dashed")+
+  theme(plot.title = element_text(hjust = 0.5), )+
+  scale_x_discrete(guide = guide_axis(n.dodge = 3))
+
+```
+
+
+It is clear that tidyverse is one of the most valuable tools for data manipulation and analysis. String manipulation, dataframe tidying, dataframe manipulation, and plotting are all made so much better by tidyverse. 
+
+### Data Source
+
+https://projects.fivethirtyeight.com/2021-nfl-predictions/
+
+https://www.tidyverse.org

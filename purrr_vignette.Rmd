@@ -27,6 +27,7 @@ We will be using a League of Legends dataset, provided by Santiago Torres in pro
 ```{r}
 library(rjson)
 library(tidyverse)
+library(tidyr)
 library(stringr)
 library(jsonlite)
 library(purrr)
@@ -140,6 +141,81 @@ is_not_null <- negate(is.null)
 map_lgl(lst, is_not_null)
 ```
 
+
+## Using modify() and custom functions to clean data
+
+
+The JSON file returned includes i18n columns that translates text. This function extracts the english version for each variable
+
+```{r}
+
+# extract .en version of a column and assign it to variable
+translate <- function(.x) {
+  ifelse((is.data.frame(.x) | is.list(.x)) && "en" %in% names(.x),
+          return(.x$en),
+          return(.x)
+          )
+}
+
+
+```
+
+
+Load data from the nobel prize api
+
+```{r}
+
+#load data from nobel prize api
+raw_json = fromJSON("https://api.nobelprize.org/2.1/laureates",
+                   simplifyDataFrame = TRUE
+                   ) 
+life_df  <- pluck(raw_json, "laureates") %>% as_tibble()
+
+```
+
+
+Call custom function to extract english column
+
+```{r}
+
+life_df <- modify(life_df, translate)
+life_df$birth$place <- modify(life_df$birth$place, translate)
+life_df$death$place <- modify(life_df$death$place, translate)
+
+```
+
+
+Clean-up and flatten data to create a tiddy record for an individual Nobel Laureates
+
+```{r}
+
+
+life_df <- life_df %>% select(id, knownName, familyName, gender, nobelPrizes, birth, death)
+
+life_df <- life_df %>%
+    mutate(
+        birth_date = life_df$birth$date,
+        birth_city = life_df$birth$place$cityNow,
+        birth_country = life_df$birth$place$countryNow,
+        death_date = life_df$death$date,
+        death_city = life_df$death$place$cityNow,
+        death_country = life_df$death$place$countryNow 
+    )
+
+
+
+life_df <- life_df %>%
+    unnest_wider(nobelPrizes, simplify = TRUE) %>%
+    unnest_wider(category, simplify = TRUE) %>%
+    rename (
+        award = en
+    ) %>%
+    select (-c(categoryFullName, motivation, affiliations, links, residences, birth, death, se, no))
+
+
+life_df
+
+```
 
 
 

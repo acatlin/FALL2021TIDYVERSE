@@ -1,0 +1,131 @@
+---
+title: "Tidyverse Extend Work on TIDYVERSE PACKAGES"
+author: "Javier Pajuelo extending Trang Do's work"
+output: 
+  html_document:
+    code_folding: show
+    theme:
+      bg: "#202123"
+      fg: "#B8BCC2"
+      primary: "#EA80FC"
+      base_font:
+        google: Prompt
+      heading_font:
+        google: Proza Libre
+      version: 3
+---
+
+```{r setup, include=FALSE}
+if (requireNamespace("thematic")) 
+  thematic::thematic_rmd(font = "auto")
+```
+
+## WORKS CITED
+
+WORKS CITED
+
+Vincentarelbundock. “Vincentarelbundock/Rdatasets.” GitHub, 2020, github.com/vincentarelbundock/Rdatasets/tree/master/csv/carData. File Arrests.CSV & File Arrests.html
+
+This is an R Markdown document themed with [`{bslib}` package]
+
+## INTRODUCTION {.tabset .tabset-pills}
+Tidyverse Packages:
+- ggplot2
+- dplyr
+- tidyr
+
+### Histogram with ggplot2
+
+```{r}
+library(ggplot2)
+
+vfile = "https://raw.githubusercontent.com/Trangmis/607/master/TidyVerse-CREATE/Arrests.csv"
+
+Arrests = read.csv(file = vfile)
+
+ggplot(Arrests, aes(x=age)) + 
+  geom_histogram(color="blue",fill="lightblue")
+
+ggplot(Arrests, aes(x=age)) + 
+  geom_histogram(aes(y = (..density..)),color="yellow",bin=15)+
+  geom_density(color="red")
+
+ggplot(Arrests, aes(x=age)) + 
+  geom_histogram(aes(y = (..count..), fill=sex),bin=15)+
+  facet_wrap(~sex)
+
+ggplot(Arrests, aes(x=age)) + 
+  geom_histogram(aes(y = (..density..), fill=sex),bin=15)+
+  geom_density(color="brown")+
+  facet_wrap(~sex)
+```
+
+### Jitter plot with ggplot2
+
+```{r}
+library(tidyr)
+library(dplyr)
+GenderAge <- Arrests[,c("age","sex","checks")]
+names(GenderAge)[names(GenderAge) == "sex"] <- "gender"
+
+ggplot(GenderAge %>% select(age, gender, checks) %>%
+        group_by(age, gender) %>%
+        summarise(tot_arrest=sum(checks)),aes(age,tot_arrest)) + 
+  geom_point(aes(color=gender))+
+  ylab("number of arrests")
+
+GenderAge <- Arrests[,c("age","sex","checks")]
+names(GenderAge)[names(GenderAge) == "sex"] <- "gender"
+
+ggplot(GenderAge,aes(x=age, y=checks))+
+geom_point(aes(color=gender)) +
+  ylab("number of arrests")
+
+
+Arrests$employed[Arrests$employed == "Yes"] <- 'Employed'
+Arrests$employed[Arrests$employed == "No"] <- 'Unemmployed'
+names(Arrests)[names(Arrests) == "employed"] <- "Employment_status"
+ggplot(Arrests,aes(Employment_status,checks,color=Employment_status)) + 
+  geom_jitter()+
+  ylab("number of arrests")
+```
+
+### Boxplot plot with ggplot2
+
+```{r}
+library(tidyr)
+library(dplyr)
+ggplot(GenderAge %>% select(age, gender, checks) %>%
+        group_by(age, gender) %>%
+        summarise(tot_arrest=sum(checks)),aes(gender,age,fill=gender)) + 
+  geom_boxplot()
+
+ggplot(GenderAge %>% select(age, gender, checks) %>%
+        group_by(checks, gender) %>%
+        summarise(tot_arrest=sum(checks)),aes(gender,checks,fill=gender)) + 
+  geom_boxplot()
+
+```
+
+### Javier's Extension
+Extend one of your classmate’s examples with additional code.
+
+Looks like in general males are more prone to get arrested.
+Also, they get arrested more between 0 to 30 years of age.
+
+```{r}
+arrests_lt_30yo <- Arrests %>% filter(age<=30)
+ 
+
+arrests_lt_30yo_plot <- arrests_lt_30yo %>% ggplot(aes(x = colour, fill=sex)) + geom_bar()
+print(arrests_lt_30yo_plot + ggtitle("Arrests of people <= 30 years old"))
+
+# Let's see for people under 50
+arrests_btwn_30_50yo <- Arrests %>% filter(age<=50, age>30)
+arrests_btwn_30_50yo_plot <- arrests_btwn_30_50yo %>% ggplot(aes(x = colour, fill=sex)) + geom_bar()
+print(arrests_btwn_30_50yo_plot + ggtitle("Arrests of people between 30 to 50 years old"))
+
+```
+
+
+

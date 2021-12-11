@@ -44,7 +44,7 @@ For this exercise, we'll use an excerpt of a Netflix dataset with date added per
 ```{r}
 data <- ('https://raw.githubusercontent.com/jefedigital/cuny-data-607/main/data/netflix_titles.csv')
 
-df <- read.csv(data) %>%
+df <- read_csv(data) %>%
   select(title, date_added)
 ```
 
@@ -85,3 +85,72 @@ df <- df %>%
 ```{r, echo=FALSE}
 head(df,5)
 ```
+
+## Day of the Week/Month/Year
+
+Lubridate can tell us where a day falls in the week, month and year with the __wday()__, __mday()__ and __yday()__ functions.
+
+We can use this to answer the question are their patterns to when Netflix adds movies?
+
+We are going to use these functions in addition to ggplot package to answer this question.
+
+
+```{r}
+#First convert all the dates to an unambiguous mdy format
+df$date_added <- mdy(df$date_added)
+
+#Filter out any missing dates
+df <- df %>% filter(!is.na(date_added))
+
+#Use the wday, mday and yday functions to get the day of the week/month/year
+df <-
+  df %>% mutate(day_of_wk = wday(date_added),
+                day_of_month = mday(date_added),
+                day_of_year = yday(date_added))
+```
+
+Let's look at what day of the week most Netflix movies are added.
+
+When interpreting this histogram it's worth noting that the first day of the week is Sunday.
+
+```{r}
+
+# we are going to create histograms with a color gradient as we move across the week
+ggplot(data = df, aes(x=day_of_wk, fill = cut(day_of_wk, 7))) +
+  geom_histogram(show.legend = FALSE) +
+  geom_histogram(show.legend = FALSE, bins=7) +
+  theme_minimal() +
+  labs(x = "Day of Week", y = "n") +
+  ggtitle("Histogram of Day of Week")
+```
+
+We can see that most movies are added on a Friday.
+
+Let's look at what day of the month most Netflix movies are added.
+
+```{r}
+
+# we are going to create histograms with a color gradient as we move across the month
+ggplot(data = df, aes(x=day_of_month, fill = cut(day_of_month, 31))) +
+  geom_histogram(show.legend = FALSE) +
+  geom_histogram(show.legend = FALSE, bins=31) +
+  theme_minimal() +
+  labs(x = "Day of Month", y = "n") +
+  ggtitle("Histogram of Day of Month")
+
+```
+
+We can see that most movies are added on the first day of the month.
+
+Based on the last two histograms we already have some expectations, but let's look at what day of the year most Nexflix movies are added.
+
+```{r}
+# we are going to create histograms with a color gradient as we move across the year
+ggplot(data = df, aes(x = day_of_year, fill = cut(day_of_year, 365))) +
+  geom_histogram(show.legend = FALSE, bins=365) +
+  theme_minimal() +
+  labs(x = "Day of Year", y = "n") +
+  ggtitle("Histogram of Day of Year")
+```
+
+We might expect to see 12 equidistant peaks but we see 13.  It looks like while Netflix does add most movies on the first of the month, it also adds movies halfway through the month and on the last day of the year.  All of this analysis was easily done with the __wday()__, __mday()__, __yday()__ functions and the __ggplot()__ function.

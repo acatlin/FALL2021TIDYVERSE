@@ -1,0 +1,226 @@
+---
+title: "DATA 607 - Tidyverse EXTEND"
+author: "CLAUDIO, Mauricio"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Tidyverse Create Assignment Vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This Tidyverse EXTEND assignment was performed on the basis of the [Tidyverse CREATE assignment by Chinedu Onyeka](https://github.com/acatlin/FALL2021TIDYVERSE/blob/022bfb1bd67e21075200a6b3dfceac20c0c5c117/Chinedu_CUNY_SPS_DATA607_create_vignette.Rmd). Ten additional function vignettes were added. All edits to the original document were annotated with a comment wrapped in three hash tags.
+
+
+## Vignette Info  
+This vignette demonstrates how to use some functions from the dplyr and ggplot2 packages in the tidyverse suit of packages <br/>  
+
+## Data  
+The data used to demonstrate the usage of the dplyr and ggplot2 package was obtained from kaggle. See the link below: <br/>
+[Heart Failure Dataset](https://www.kaggle.com/fedesoriano/heart-failure-prediction)
+
+## Load Libraries  
+
+```{r, message=FALSE, warning=FALSE}
+### Tidyverse EXTEND
+### A 'warning=FALSE' parameter was added to suppress run-time warnings ###
+library(tidyverse)
+###
+```
+
+## Read the data  
+```{r read-data, message=FALSE}
+url <- "https://raw.githubusercontent.com/chinedu2301/DATA607-Data-Acquisition-and-Management/main/heart.csv"
+heart_failure <- read_csv(url)
+```
+```{r}
+# Look into the data to know what columns are present
+head(heart_failure)
+
+### Tidiverse EXTEND
+
+### Head displays the top records. Sometimes you want to see the top and bottom to get a better sense of the data. To see the bottom, use the 'tail()' command.
+tail(heart_failure)
+
+###
+```
+## dplyr package
+
+### *glimpse*  
+Q: What are the variables and data types of the variables in my dataset?  
+A: Use dplyr's glimpse function.
+```{r}
+glimpse(heart_failure)
+```
+
+### *select*  
+Q: I do not need all the columns, how do I select the columns that I only need for my analysis?  
+A: Use dplyr's select function.  
+```{r}
+# select all columns except Oldpeak and ST_Slope
+heart_failure_sub <- heart_failure %>% select(-c(Oldpeak, ST_Slope))
+# select columns Age, Sex, RestingBP, and HeartDisease
+heart_failure_sub1 <- heart_failure %>% select(Age, Sex, RestingBP, HeartDisease)
+# select from columns Age to ExerciseAngina
+heart_failure_sub2 <- heart_failure %>% select(Age:ExerciseAngina)
+```
+
+View the head of heart_failure_sub
+```{r}
+head(heart_failure_sub)
+```
+View the head of heart_failure_sub1
+```{r}
+head(heart_failure_sub1)
+```
+View the head of heart_failure_sub2
+```{r}
+head(heart_failure_sub2)
+```
+### *filter*  
+Q: I want only observations where Sex is M  
+A: Use dplyr's filter function.
+```{r}
+heart_failure_male <- heart_failure %>% filter(Sex == "M")
+head(heart_failure_male)
+```
+Q: I want only observations where RestingECG is Normal  
+A: Use dplyr's filter function.  
+```{r}
+heart_failure_disease <- heart_failure %>% filter(RestingECG == "Normal")
+head(heart_failure_disease)
+```
+Q: I want only observations where Cholesterol is above 250.  
+A: Use the  ``filter`` function on a numerical column with the greater-than (or less-than) operator.  
+```{r}
+### Tidyverse EXTEND
+
+heart_failure_disease <- heart_failure %>% filter(Cholesterol > 250)
+head(heart_failure_disease)
+
+###
+```
+Q: I want to filter on more than one variable at a time.  
+A: Use a single ``filter`` function with more than one operation
+```{r}
+### Tidyverse EXTEND
+
+heart_failure_disease <- heart_failure %>% filter(RestingBP < 130, ChestPainType == "ATA" )
+head(heart_failure_disease)
+
+###
+```
+
+### *arrange()*
+
+Q: How do I sort column values?  
+A: Use the ``arrange`` function to sort in ascending or descending order
+
+```{r}
+### Tidyverse EXTEND
+
+heart_failure_disease |>
+  arrange(Age) ## The default is ascending order
+
+heart_failure_disease |>
+  arrange(desc(Cholesterol)) ## Arrange in descending order
+
+###
+```
+
+### *mutate()*  
+
+Q: How do I create a new column with the results of a calculation?  
+A: Use the ``mutate`` function.
+
+```{r}
+### Tidyverse EXTEND
+### Let's imagine that we wish to calculate the ratio of Cholesterol to RestingBP for each observations.
+
+heart_failure_disease |>
+  mutate(ratio = Cholesterol / RestingBP) |>
+  select(RestingBP,Cholesterol,ratio)
+
+###
+```
+
+### *count()*  
+
+Q: How do I count the instances for each variable value?  
+A: Use the ``count()`` function
+
+```{r}
+### Tidyverse EXTEND
+
+heart_failure_disease |>
+  count(RestingECG)
+
+heart_failure_disease |>
+  count(RestingECG, sort=TRUE) ## Let's sort that.
+
+###
+```
+
+
+## *rename*  
+Q: How do I rename a column?  
+A: Use dplyr's rename function
+```{r}
+heart_failure <- heart_failure %>% rename("Gender" = Sex)
+head(heart_failure)
+```
+
+## ggplot2 package  
+
+### *Scatterplot*  
+Q: I want to plot a scatter plot of RestingBP vs. Cholesterol  
+A: Use the ggplot function and the geom_point layer  
+```{r}
+ggplot(data = heart_failure, aes(x = Cholesterol, y = RestingBP)) + geom_point()
+```
+
+Add title, transparency, and theme
+```{r}
+ggplot(data = heart_failure, aes(x = Cholesterol, y = RestingBP)) + geom_point(alpha = 0.5) + 
+  labs(title = "RestingBP vs. Cholesterol") + theme_bw()
+```
+
+Add a third variable, RestingECG, through dot color.  
+```{r}
+### Tidyverse EXTEND
+
+ggplot(data = heart_failure, aes(x = Cholesterol, y = RestingBP, color = RestingECG)) + geom_point()
+
+###
+```
+
+Create separate plots for each value of the RestingECG variable
+
+```{r}
+### Tidyverse EXTEND
+
+ggplot(data = heart_failure, aes(x=Cholesterol,y=RestingBP)) + geom_point() +
+  facet_wrap(~RestingECG)
+
+###
+```
+
+
+
+### *Barplot*  
+Q: I want to plot a barchart of the count of Male and Female in the dataset  
+A: Use the ggplot function and the geom_bar layer
+```{r}
+ggplot(data = heart_failure, aes(x = Gender)) + geom_bar(fill = "brown") + 
+  labs(title = "Bar chart for count of Sex") + theme_bw()
+```
+
+Q: How do I flip co-ordinates?  
+A: Add the coord_flip layer
+```{r}
+ggplot(data = heart_failure, aes(x = Gender)) + geom_bar(fill = "brown") + 
+  labs(title = "Bar chart for count of Sex") + theme_bw() + coord_flip()
+```
+
+
+

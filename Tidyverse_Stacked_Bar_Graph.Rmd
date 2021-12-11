@@ -1,0 +1,45 @@
+---
+title: "TidyVerse Stacked Bar Graph"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidyr)
+```
+
+# Data
+I wanted to find a data set that allowed me to do quantitative comparisons for different groups. This dataset provides the approval ratings for Presidents Biden and Trump on their handling of the Coronavirus pandemic. For this study, I have focused only on president Biden.
+
+# 1
+
+The data was extracted from fivethirtyeight.com (https://data.fivethirtyeight.com/) related to their article "How Americans View Biden’s Response To The Coronavirus Crisis". Once acquired, the csv file was added to a github repository, from where it was read for analysis.
+
+```{r}
+polls <- data.frame(read.csv("https://raw.githubusercontent.com/Patel-Krutika/Tidyverse/main/covid_approval_polls_adjusted.csv"))
+colnames(polls)
+```
+# 2
+
+The variables of interest for us were: Subject, Party, StartDate, and Approve (number of approvals). The selected data was filtered to only contain information about president Biden and the three parties of interest (Democrat, Republican, Independent). The month part was extracted from the startDate column and used to create a month column to group by.
+```{r}
+poll<- polls %>% select(Subject = subject, Party = party, Date = startdate, Approve = approve) %>% filter(Subject=="Biden", Party == "D" | Party == "R" | Party == "I")
+poll <- poll %>% mutate(Month = substr(Date, start = 1, stop = 2))
+
+poll$Month <- gsub("/","",as.character(poll$Month))
+poll$Month <- factor(poll$Month,levels = c(1,2,3,4,5,6,7,8,9,10))
+head(poll)
+```
+# 3
+
+A stacked bar graph was created with the changed data. Each bar represents the number of approvals from members of each party for each month from January to Oct 2021.
+```{r}
+ggplot(poll, aes(fill=Party, y=Approve, x=Month)) + 
+    geom_bar(position="stack", stat="identity") + ggtitle("Biden Approval By Party")
+```
+
+

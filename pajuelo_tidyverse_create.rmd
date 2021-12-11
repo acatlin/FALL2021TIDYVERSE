@@ -1,0 +1,85 @@
+---
+title: "tidyverse_create vignette"
+author: "Javier Pajuelo Bazan"
+date: "11/4/2021"
+output:
+ prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## OVERVIEW
+TidyVerse CREATE assignment
+
+Your task here is to Create an Example.  Using one or more TidyVerse packages, and any dataset from fivethirtyeight.com or Kaggle,
+create a programming sample “vignette” that demonstrates how to use one or more of the capabilities of the selected TidyVerse
+package with your selected dataset. (25 points)
+
+We are using the kaggle URL:
+https://www.kaggle.com/uciml/red-wine-quality-cortez-et-al-2009?select=winequality-red.csv
+
+```{r ,message=FALSE, echo=TRUE}
+WINE_QUALITY_RAW_URL <- 'https://raw.githubusercontent.com/quaere1verum/sps_public/master/data607-001/assignments/tidyverse_assignments/winequality-red.csv'
+
+library(curl)
+# using tidy verse packages
+# -- Attaching packages -------------------------------------------------------------------------------------------------- tidyverse 1.3.1 --
+#   v ggplot2 3.3.5     v purrr   0.3.4
+# v tibble  3.1.3     v stringr 1.4.0
+# v tidyr   1.1.3     v forcats 0.5.1
+# v readr   2.0.1     
+library(tidyverse)            
+```
+
+
+## Using readr package from tidyverse
+Readr package contains the read_csv function required to load our data.
+
+```{r ,message=FALSE, echo=TRUE}
+load_csv_from_url <- function(url_path)
+{
+  tmp <- tempfile()
+  curl_download(url_path, tmp)
+  read_csv(tmp)               # read_csv() requires dependencies from tidyverse, readr package 
+}
+
+wine_quality_data <- load_csv_from_url(WINE_QUALITY_RAW_URL)
+```
+
+## Using purr package from tidyverse
+Purr package has functions like maps data to functions and returns vectors.
+
+```{r ,message=FALSE, echo=TRUE}
+# using purr package from tidyverse
+wine_quality_data %>%
+  split(.$alcohol) %>% # from base R
+  map(~ lm(`volatile acidity` ~ `citric acid`, data = .)) %>%
+  map(summary) %>%
+  map_dbl("r.squared")  # map_dbl is a purr function returns double vectors
+
+```
+
+## Using gplot package from tidyverse
+Adding a few cool plots that show some kind of relationship between acidity and alcohol quantity and quality.
+
+```{r ,message=FALSE, echo=TRUE}
+ggplot(wine_quality_data, aes(`fixed acidity`, `volatile acidity`, colour = alcohol)) + 
+  geom_point()
+```
+
+```{r ,message=FALSE, echo=TRUE}
+ggplot(wine_quality_data, aes(`fixed acidity`, `volatile acidity`, colour = quality)) + 
+  geom_point()
+
+
+# Later, you'll be asked to extend an existing vignette.  Using one of your classmate’s examples (as created above), you'll then 
+# extend his or her example with additional annotated code. (15 points)
+# I think this 'Later' reference means to the tidy verse extend assignment
+
+##### Javier's vignette ends #####
+```
+
+

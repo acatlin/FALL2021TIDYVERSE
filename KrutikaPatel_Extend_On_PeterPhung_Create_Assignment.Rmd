@@ -1,0 +1,204 @@
+---
+title: "DATA 607 - Tidyverse Create Assignment"
+author: "Peter Phung, Extended on by Krutika Patel"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Introduction
+
+In this report, we investigate the distribution of patients with heart failure using a dataset of people who had varying degrees of chest pain when they were checked into the hospital. More information about this dataset can be found in this [kaggle hyperlink](https://www.kaggle.com/fedesoriano/heart-failure-prediction). Several tidying transformations using the `tidyverse` package will be showcased in this notebook in order to show the benefits of using such transformations on this dataset including others.
+
+### Importing of the Data
+
+The data is imported and stored as a dataframe in the `heart_data` variable.
+```{r importing data}
+
+library(tidyverse)
+
+url <- 'https://raw.githubusercontent.com/peterphung2043/DATA-607---Tidyverse-Create-Assignment/main/heart.csv'
+
+heart_data <- read.csv(url(url), stringsAsFactors = FALSE)
+
+```
+
+### Selecting Columns
+
+The code block below selects only the `Age`, `Sex` and `ChestPainType` from the `heart_data` dataframe and stores these columns in a new dataframe called `heart_data_parsed`.
+
+```{r selecting columns}
+
+heart_data_parsed <- heart_data %>%
+  select(Age, Sex, ChestPainType)
+
+knitr::kable(head(heart_data_parsed))
+
+```
+
+In the `Sex` column:
+
+- `M`: Male
+- `F`: Female
+
+In the `ChestPainType` column:
+
+- `TA`: Typical angina
+- `ATA`: Atypical angina
+- `NAP`: Non-anginal pain
+- `ASY`: Asymptomatic
+
+
+### Using Pivot Wider to Pivot by `Sex` and `ChestPainType`
+
+The code block below uses the `pivot_wider` function from the `tidyr` package in order to sort the ages by sex and chest pain type using the `Age`, `Sex`, and `ChestPainType` columns. The resulting dataframe is then stored in the `heart_data_pivoted` variable. The pipeline consists of 4 steps:
+
+1. The `group_by` function is used on the `heart_data_parsed` dataframe in order to group the data by `ChestPainType` first, then `Sex`.
+2. The mutate function is used in order to create a new variable called `row` using the `row_number` function. Every unique instance of `ChestPainType` and `Sex` is given a separate count.
+3. The `pivot_wider` function takes in the `Sex` and `ChestPainType` variables as arguments to the `names_from` parameter. The `values_from` parameters takes in the `Age` variable. What this function does it take every `Age` for every unique instance of both `Sex` and `ChestPainType`, and lops all of the `Age` observations for every unique instance of both `Sex` and `ChestPainType` into a unique column. For example, the `M_ATA` column contains all of the ages for all of the males that had atypical angina.
+
+```{r pivoting wider}
+
+heart_data_pivoted <- heart_data_parsed %>%
+  group_by(ChestPainType, Sex) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(names_from = c(Sex, ChestPainType), values_from = c(Age)) %>%
+  select(-row)
+
+knitr::kable(head(heart_data_pivoted))
+
+```
+
+### Using `nest` to Create a List-column of Dataframes
+
+We can tidy up our data even further by creating a list-column of dataframes, where each dataframe is a gender. To do this, we can use the `nest` function found in the `tidyr` package.
+
+The `nest` function is used in the pipeline below. The `male` dataframe takes in all of the columns that start with `M_` using the `starts_with` function. The `female` datarame takes in all of the columns that start with `F_` using the `starts_with` function. 
+
+```{r nest_gender}
+
+nest_gender <- heart_data_pivoted %>%
+  nest(male = starts_with("M_"), female = starts_with("F_"))
+```
+
+In the environment in RStudio, the `nest_gender` dataframe will show up on the screen with an output similar to what is shown on the table. Each observation in the dataframe below can be clicked on, which will take you to the dataframe containing the information pertaining to the target observation in the `nest_gender` dataframe.
+
+```{r nest_gender visual}
+
+nest_df_visual <- data.frame(
+  male = c('4 variables'),
+  female = c('4 variables')
+)
+
+knitr::kable(nest_df_visual)
+
+```
+
+### Using `pivot_longer` with `ggplot`
+
+In order to display multiple boxplots on the same screen for `Age` by `Gender` and `ChestPainType`, all of the data must be on one column. Therefore, the `pivot_longer` function was used on the `heart_data_pivoted` dataframe in order to do so. The `pivot_longer` function essentially increases the number of rows and decreases the number of columns.
+
+```{r pivoting longer}
+
+heart_data_pivoted_longer <- pivot_longer(heart_data_pivoted,
+                                          cols = starts_with(c("M_", "F_")), 
+                                          names_to = 'chest_pain_type_by_gender',
+                                          values_to = 'age')
+
+knitr::kable(head(heart_data_pivoted_longer))
+```
+
+`heart_data_pivoted_longer` can now be used with `ggplot` and `geom_boxplot` to construct boxplots of `Age` by `Sex` and `ChestPainType` on the same screen.
+
+```{r ggplot heart_data_pivoted_longer}
+
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + 
+  geom_boxplot()
+
+
+```
+
+### Conclusions
+This report shows a use case for `select` from the `dplyr` package. The report also showcases the `pivot_wider`, `pivot_longer`, and `nest` functions from the `tidyr` package,  and `ggplot` which belongs to the `ggplot2` package. All of these packages are part of the `tidyverse` suite of packages which are essential in R for robust data tidying, transforming, and analysis. 
+
+```{r}
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + 
+  geom_boxplot()
+```
+
+
+# Krutika Patel - Extension
+
+## Creating and customizing graphs using ggplot2
+This extension will show the customization functions and techniques available in the ggplot library.
+
+
+### Title
+The `ggtitle` function adds the given title to the graph
+```{r}
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + 
+  geom_boxplot() + ggtitle("Chest Pain Type By Gender")
+```
+
+
+### Coodinate Systems
+The `coord_flip` function will show a graph with the flipped Cartisian coordinates
+
+```{r}
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + 
+  geom_boxplot() + ggtitle("Chest Pain Type By Gender") + coord_flip()
+```
+
+### Faceting 
+Faceting allows a graph to be divided into sun graphs based on one or more discrete. By using the `facet_grid` function the parsed dataframe can be divided into boxplots for each unique chest pain type and gender value. This allows us to create the initial boxplot graph without manipulating the dataframe.
+```{r}
+t <- ggplot(heart_data_parsed, aes(Age)) + geom_boxplot() + coord_flip()
+t + facet_grid(cols = vars(ChestPainType, Sex))
+
+
+```
+
+
+### Theme
+
+ggplot offers multiple themes for plots, a few are shown below.
+
+```{r}
+
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + 
+  geom_boxplot() + theme_bw() + ggtitle("theme_bw")
+
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + 
+  geom_boxplot() + theme_dark() + ggtitle("theme_dark")
+
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + 
+  geom_boxplot() + theme_light() + ggtitle("theme_light")
+
+
+```
+
+
+### Color
+
+Color by variable: Giving the `color` variable a x value, organizes each boxplot with a unique color outline. Giving the `fill` variable a x value, organizes each boxplot with a unique color.
+
+```{r}
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age, color=chest_pain_type_by_gender)) + 
+  geom_boxplot() 
+```
+
+```{r}
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age, fill=chest_pain_type_by_gender)) + 
+  geom_boxplot() 
+```
+
+Same color: Give the desired color to either `color` or `fill` to produce boxplots with the same color outlines or solid fill respectively.
+
+```{r}
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + geom_boxplot(color = "green")
+```
+
+```{r}
+ggplot(heart_data_pivoted_longer, mapping = aes(x = chest_pain_type_by_gender, y = age)) + geom_boxplot(fill = "green")
+```
+

@@ -1,0 +1,235 @@
+---
+title: "tidyverse: using case_when and str_replace for variable derivation"
+author: "William Aiken" and "Catherine Cho"
+date: "10/24/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(reshape2)
+library(kableExtra)
+```
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+## Overview
+### This is an example of using the dplyr case_when() function instead of nested ifelse() funcitons.
+
+The data comes from the *fivethirtyeight* article "The Ultimate Halloween Candy Power Ranking"
+
+[link to The Ulitmate Halloween Candy Power Ranking](https://fivethirtyeight.com/videos/the-ultimate-halloween-candy-power-ranking/)
+
+### This is a dataset of 85 common Halloween treats
+
+We read in the data from GitHub using the tidyverse readr package
+
+```{r}
+#Read in the data
+file_path <- "https://raw.githubusercontent.com/catfoodlover/Data607/main/Data607_HW1_Data_WilliamAiken.csv"
+
+candy_df <- read_csv(file_path, show_col_types = FALSE)
+
+#Select columns of interest and fix names when necessary
+candy_df <- candy_df %>% select(names = competitorname, choco = chocolate, fruity, caramel, nuts = peanutyalmondy, nougat, crispy = crispedricewafer, win_percent = winpercent)
+
+#Character needs to be fixed
+candy_df$names <- gsub( "Õ", "'", candy_df$names)
+
+# #Convert dataset from wide to long to make it easier to work with
+# temp <- melt(data = candy_df, id.vars = "names", measure.vars = c("choco", "fruity", "caramel", "nuts", "nougat", "crispy"), variable.name = "Property", value.name = "Status")
+
+# #Join win percentage back in
+# temp2 <- left_join(temp, candy_df %>% select(names, win_percent), by = "names")
+```
+
+There are instances where we want to use logic to either update current fields or derive new fields based on a logic evaluation.  In base R, we could use the ifelse() function but if there are multiple conditions we end up with nested ifelse() statements which can be challenging to validate and debug.
+
+With the tidyverse dplyr library we get the case_when function that allows for multiple conditions to be validates at the same time.
+
+In the current data set we have multiple candy properties and we would like to create new categories based on the current properties
+
+We don't have to create exhaustive categories, we can create a fall through case that catches all other values
+
+```{r}
+temp <- candy_df %>% mutate(
+  choco_composite = case_when(
+    choco == 1 &
+      nuts == 1 &
+      nougat == 1 &
+      caramel == 1 ~ "choco_caramel_nougat_nut",
+    choco == 1 &
+      nuts == 1 &
+      nougat == 1 &
+      caramel == 0 ~ "choco_nougat_nut",
+    choco == 1 &
+      nuts == 1 &
+      nougat == 0 &
+      caramel == 1 ~ "choco_caramel_nut",
+    choco == 1 &
+      nuts == 1 &
+      nougat == 0 &
+      caramel == 0 ~ "choco_nut",
+    choco == 1 &
+      nuts == 0 &
+      nougat == 0 &
+      caramel == 0 ~ "choco_only",
+    choco == 1  ~ "choco_other",
+    TRUE ~ "other"
+  )
+) %>% group_by(choco_composite) %>% summarise(average_win = round(mean(win_percent), 2), count_n = n())
+
+temp %>% select(choco_composite, average_win, count_n) %>% kbl() %>% kable_styling()
+```
+
+The case_when() function also allows you to set values to NA if you don't include a fall through case
+
+Here we are going to turn all non-chocolate candy to NA and find the average win percentage
+
+```{r}
+temp <- candy_df %>% mutate(
+  choco_composite = case_when(
+    choco == 1 &
+      nuts == 1 &
+      nougat == 1 &
+      caramel == 1 ~ "choco_caramel_nougat_nut",
+    choco == 1 &
+      nuts == 1 &
+      nougat == 1 &
+      caramel == 0 ~ "choco_nougat_nut",
+    choco == 1 &
+      nuts == 1 &
+      nougat == 0 &
+      caramel == 1 ~ "choco_caramel_nut",
+    choco == 1 &
+      nuts == 1 &
+      nougat == 0 &
+      caramel == 0 ~ "choco_nut",
+    choco == 1 &
+      nuts == 0 &
+      nougat == 0 &
+      caramel == 0 ~ "choco_only",
+    choco == 1  ~ "choco_other"
+  )
+)
+
+temp %>% count(choco_composite) %>% kbl() %>% kable_styling()
+```
+
+We can also use the tidyverse stringr package to update our 'choco_composite' column.
+
+Say we want to make 'nut' more descriptive.  We can use str_replace() to change all the strings containing 'nut' to 'almond_peanut'
+
+```{r}
+temp2 <- temp %>% mutate(choco_composite_update = str_replace(choco_composite, "nut", "almond_peanut"))
+
+temp2 %>% count(choco_composite, choco_composite_update) %>% kbl() %>% kable_styling()
+
+temp2$choco_composite_update
+
+temp2 %>% 
+  count(choco_composite, choco_composite_update) %>% 
+  kbl() %>% 
+  kable_styling() 
+
+
+
+temp2 %>% 
+  count(choco_composite, choco_composite_update) %>% 
+  kbl() %>% 
+  kable_styling() 
+```
+
+
+## Other Formatting Tricks with Kable
+
+
+**Applying a 'striping' theme to alternating rows**
+
+```{r, warning=FALSE, message=FALSE}
+# Make a copy for demonstration purposes
+temp3 <- temp2
+
+temp3 %>%
+  head(10) %>%
+  select(names, win_percent, choco ) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) 
+```
+
+**Column Specifications**
+
+You can specify a specification based on a continuous variable. For example, we'll define a color specification base on each win_percent cell's value. We can also specify a web graphic as well. 
+```{r, warning=FALSE, message=FALSE}
+temp3 %>%
+  head(10) %>%
+  select(names, win_percent, choco ) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  column_spec(1, width = "1em") %>%
+  column_spec(2, color = spec_color(temp3$win_percent), image ="https://icons.iconarchive.com/icons/icons8/christmas-flat-color/24/candy-icon.png", 20,20) 
+  
+
+```
+
+
+**Coloring Cell Backgrounds**
+
+Aside from the text color, we can specify a cell's background color as well. Below, we apply a conditional check to determine the background color.
+
+```{r, warning=FALSE, message=FALSE}
+
+temp3 %>%
+  head(10) %>%
+  select(names, win_percent, choco ) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  column_spec(2, color = spec_color(temp3$win_percent), image ="https://icons.iconarchive.com/icons/icons8/christmas-flat-color/24/candy-icon.png", 20,20) %>% 
+  column_spec(3, color = "white",
+              background = spec_color(temp3$choco, end = 0.7)) 
+```
+
+
+**Row Based Specifications **
+
+If we want to highlight rows, that's possible with the row_spec function. Below, we only highlight rows 3 through 5 and highlight in red. The extra_css parameter allows for ad-hoc CSS in-line attributes as well.
+
+```{r, warning=FALSE, message=FALSE}
+temp3 %>%
+  head(10) %>%
+  select(names, win_percent, choco ) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  column_spec(2, color = spec_color(temp3$win_percent), image ="https://icons.iconarchive.com/icons/icons8/christmas-flat-color/24/candy-icon.png", 20,20) %>% 
+  column_spec(3, color = "white",
+              background = spec_color(temp3$choco, end = 0.7)) %>%
+  row_spec(3:5, bold = T, color = "white", background = "#D7261E", extra_css="opacity:0.75")
+
+```
+
+Dplyr Extended: Catherine Cho
+
+This vignette is extended to demonstrate the use of function summarize() in dplyr. This is a useful function to count up the different values in a column. 
+
+```{r}
+temp%>%
+  group_by(choco_composite)%>%
+  summarize(n())
+```
+
+Additionally, the group_by() function can be used to perform built-in statistical functions like mean() to per defined group. The summarize function will collapse each group into a single row  summary of the results. 
+
+```{r}
+
+temp%>%
+  group_by(choco_composite)%>%
+  summarize(mean_win=mean(win_percent,na.rm=TRUE))
+
+```
+
