@@ -360,10 +360,12 @@ Revision/Addition Description and Link:
 
 
 # Santiago T
+Initial Description and Link: PURRR Map and Reduce Examples : https://github.com/sserrot/FALL2021TIDYVERSE/blob/main/purrr_map.Rmd
+# Initial Description and Link: PURRR Map and Reduce Examples https://github.com/sserrot/FALL2021TIDYVERSE
 
-Initial Description and Link: PURRR Map and Reduce Examples https://github.com/sserrot/FALL2021TIDYVERSE
+Revision/Addition Description and Link: Extended Jeff Parks lubridate example: https://github.com/sserrot/FALL2021TIDYVERSE/blob/main/lubridate_EXTENDED_santiago.Rmd
 
-Revision/Addition Description and Link:
+Added examples of week, quarter, and interval function
 
 
 # Shane H
